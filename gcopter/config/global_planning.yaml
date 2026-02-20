@@ -2,6 +2,8 @@ MapTopic:                   '/voxel_map'
 
 TargetTopic:                '/move_base_simple/goal'
 
+PathTopic:                  '/path_topic'
+
 DilateRadius:               0.5
 
 VoxelWidth:                 0.25
