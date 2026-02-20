@@ -25,7 +25,7 @@
 #ifndef GEO_UTILS_HPP
 #define GEO_UTILS_HPP
 
-#include "quickhull.hpp"
+#include "gcopter/QuickHull.hpp"
 #include "sdlp.hpp"
 
 #include <Eigen/Eigen>
@@ -87,7 +87,7 @@ namespace geo_utils
     struct filterLess
     {
         inline bool operator()(const Eigen::Vector3d &l,
-                               const Eigen::Vector3d &r)
+                               const Eigen::Vector3d &r) const
         {
             return l(0) < r(0) ||
                    (l(0) == r(0) &&

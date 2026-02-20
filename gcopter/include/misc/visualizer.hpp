@@ -2,7 +2,7 @@
 #define VISUALIZER_HPP
 
 #include "gcopter/trajectory.hpp"
-#include "gcopter/quickhull.hpp"
+#include "gcopter/QuickHull.hpp"
 #include "gcopter/geo_utils.hpp"
 
 #include <iostream>

@@ -26,7 +26,7 @@ include_directories(
 
 catkin_package()
 
-add_executable(global_planning src/global_planning.cpp)
+add_executable(global_planning src/global_planning.cpp src/QuickHull.cpp)
 
 target_link_libraries(global_planning
   ${OMPL_LIBRARIES}
