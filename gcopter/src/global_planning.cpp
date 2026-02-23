@@ -162,6 +162,8 @@ public:
             std::vector<Eigen::Vector3d> pc;
             voxelMap.getSurf(pc);
 
+            ROS_WARN("RRT* Search Path Length: %ld",route.size());
+
             sfc_gen::convexCover(route,
                                  pc,
                                  voxelMap.getOrigin(),
@@ -169,7 +171,11 @@ public:
                                  7.0,
                                  3.0,
                                  hPolys);
+
+            ROS_WARN("Convex Cover Generated %ld Polytopes",hPolys.size());
             sfc_gen::shortCut(hPolys);
+
+            ROS_WARN("After ShortCut, %ld Polytopes Left",hPolys.size());
 
             if (route.size() > 1)
             {
@@ -231,6 +237,51 @@ public:
                 {
                     trajStamp = ros::Time::now().toSec();
                     visualizer.visualize(traj, route);
+
+                    int total_samples = 0;
+                    int violations = 0;
+                    for (int i = 0; i < traj.getPieceNum(); ++i)
+                    {
+                        const auto &piece = traj[i];
+                        if (i >= hPolys.size()) {
+                             ROS_ERROR("More pieces than polys!");
+                             break;
+                        }
+                        const auto &hPoly = hPolys[i];
+                        double duration = piece.getDuration();
+                        for (double t = 0.0; t <= duration; t += 0.01)
+                        {
+                            total_samples++;
+                            Eigen::Vector3d pos = piece.getPos(t);
+                            double violation_sum = 0.0;
+                            bool violated = false;
+                            
+                            for (int j = 0; j < hPoly.rows(); ++j)
+                            {
+                                double dist = hPoly.row(j).head<3>().dot(pos) + hPoly(j, 3);
+                                if (dist > 1e-4)
+                                {
+                                    violated = true;
+                                    violation_sum += dist;
+                                }
+                            }
+                            
+                            if (violated)
+                            {
+                                violations++;
+                                ROS_WARN("Constraint Violation: Piece %d, Time %.3f, Pos (%.3f, %.3f, %.3f), Total Violation %.5f",
+                                         i, t, pos.x(), pos.y(), pos.z(), violation_sum);
+                            }
+                        }
+                    }
+                    if (violations > 0)
+                    {
+                         ROS_WARN("Trajectory Check: %d / %d samples violated corridor constraints!", violations, total_samples);
+                    }
+                    else
+                    {
+                        ROS_INFO("Trajectory Check: All %d samples are within corridor constraints.", total_samples);
+                    }
                 }
             }
         }
@@ -243,6 +294,7 @@ public:
         std::vector<Eigen::Vector3d> pc;
         voxelMap.getSurf(pc);
 
+        ROS_WARN("Start Cover Convex Polytope...");
         sfc_gen::convexCover(route,
                                 pc,
                                 voxelMap.getOrigin(),
@@ -250,11 +302,13 @@ public:
                                 7.0,
                                 3.0,
                                 hPolys);
+
+        ROS_WARN("Start ShortCut...");
         sfc_gen::shortCut(hPolys);
 
         if (route.size() > 1)
         {
-            // visualizer.visualizePolytope(hPolys);
+            visualizer.visualizePolytope(hPolys);
 
             Eigen::Matrix3d iniState;
             Eigen::Matrix3d finState;
@@ -290,7 +344,8 @@ public:
             const int quadratureRes = config.integralIntervs;
 
             traj.clear();
-
+            
+            ROS_WARN("Start Setup Initial Value...");
             if (!gcopter.setup(config.weightT,
                                 iniState, finState,
                                 hPolys, INFINITY,
@@ -303,15 +358,62 @@ public:
                 return;
             }
 
+            ROS_WARN("Start Optimize...");
             if (std::isinf(gcopter.optimize(traj, config.relCostTol)))
             {
                 return;
             }
+            ROS_WARN("Optimize Finish!");
 
             if (traj.getPieceNum() > 0)
             {
                 trajStamp = ros::Time::now().toSec();
                 visualizer.visualize(traj, route);
+
+                int total_samples = 0;
+                int violations = 0;
+                for (int i = 0; i < traj.getPieceNum(); ++i)
+                {
+                    const auto &piece = traj[i];
+                    if (i >= hPolys.size()) {
+                         ROS_ERROR("More pieces than polys in planFromRoute!");
+                         break;
+                    }
+                    const auto &hPoly = hPolys[i];
+                    double duration = piece.getDuration();
+                    for (double t = 0.0; t <= duration; t += 0.01)
+                    {
+                        total_samples++;
+                        Eigen::Vector3d pos = piece.getPos(t);
+                        double violation_sum = 0.0;
+                        bool violated = false;
+                        
+                        for (int j = 0; j < hPoly.rows(); ++j)
+                        {
+                            double dist = hPoly.row(j).head<3>().dot(pos) + hPoly(j, 3);
+                            if (dist > 1e-4)
+                            {
+                                violated = true;
+                                violation_sum += dist;
+                            }
+                        }
+
+                        if (violated)
+                        {
+                            violations++;
+                            ROS_WARN("Constraint Violation (planFromRoute): Piece %d, Time %.3f, Pos (%.3f, %.3f, %.3f), Total Violation %.5f",
+                                     i, t, pos.x(), pos.y(), pos.z(), violation_sum);
+                        }
+                    }
+                }
+                if (violations > 0)
+                {
+                     ROS_WARN("Trajectory Check (planFromRoute): %d / %d samples violated corridor constraints!", violations, total_samples);
+                }
+                else
+                {
+                    ROS_INFO("Trajectory Check (planFromRoute): All %d samples are within corridor constraints.", total_samples);
+                }
             }
         }
     }
@@ -349,11 +451,13 @@ public:
             ROS_WARN("Map not initialized yet!");
             return;
         }
+        
         std::vector<Eigen::Vector3d> route;
         for (auto &p : msg->poses)
         {
             route.emplace_back(p.pose.position.x, p.pose.position.y, p.pose.position.z);
         }
+        ROS_WARN("Receive %ld waypoints from path topic.", route.size());
         planFromRoute(route);
 
     }
