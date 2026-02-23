@@ -4,11 +4,11 @@ TargetTopic:                '/move_base_simple/goal'
 
 PathTopic:                  '/path_topic'
 
-DilateRadius:               0.5
+DilateRadius:               0.25
 
-VoxelWidth:                 0.25
+VoxelWidth:                 0.15
 
-MapBound:                   [-25.0, 25.0, -25.0, 25.0, 0.0, 5.0]
+MapBound:                   [-100.0, 100.0, -100.0, 100.0, 0.0, 5.0]
 
 TimeoutRRT:                 0.02
 
